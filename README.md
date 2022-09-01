@@ -15,6 +15,10 @@ With some study, you can also implement this type of solution in Azure or AWS. F
 
 **The end result is an operational datastore containing all of your Satori audit data, with a publishing and syncronization solution between Satori and your new cloud sql datastore. This information can then be used in various ways downstream from the Satori Platform.**
 
+![overview](images/overview.png)
+
+_Note: if you already have a SQL instance running somewhere and would like to use a simple python script / jupyter notebook, without setting up all of the infrastructure shown below, you may be interested in the following [gist](https://gist.github.com/northwestcoder/c7dec1e50b47d92d1f8eef55524ee14b)._
+
 ## GCP Environment
 
 We recommend devoting a project to this solution
@@ -41,7 +45,7 @@ You must have a valid Satori account for this solution. You will need to generat
 ## Cloud SQL
 
 - Create a PostgresDB instance and take note of the connection username, password, and database name.
-- make sure to assign a public IP address for this instance.
+- If you are using this project and quick start in its entirety, then you can create your cloud sql instance with just a private IP.
 - Size the instance appropriately based upon your eventual Satori audit usage volume.
 - Several GCP tutorials on cloud SQL are available [here](https://cloud.google.com/sql/docs/postgres/quickstarts)
 - Once created, take note of your cloud SQL INSTANCE_NAME, it takes the form PROJECTNAME:REGION:DBNAME. You will need this in a later step.
@@ -49,14 +53,14 @@ You must have a valid Satori account for this solution. You will need to generat
 ## Cloud Secrets
 
 - Create three secrets for this solution, their names must be exactly as shown:
-	- satori_postgres_password
+	- satori-postgres-password
 	- satori-sql-instancename
 	- satori-serviceaccount-key 
 
 Using the gcloud cli, you can run commands similar to the following, change the printf portion to the actual values for your environment:
 
 ```
-printf "YOUR_PG_PASSWORD" | gcloud secrets create satori_postgres_password
+printf "YOUR_PG_PASSWORD" | gcloud secrets create satori-postgres-password
 printf "YOUR_SATORI_SERVICE_ACCOUNT_SECRET" | gcloud secrets create satori-serviceaccount-key
 printf "YOUR_PG_GCP_INSTANCE_NAME" | gcloud secrets create satori-sql-instancename	
 
@@ -81,8 +85,8 @@ Our GCP Cloud Function will do the heavy lifting and perform the following tasks
 - Connect to PostgresDB and create a temp table
 - Connect to the Satori Rest API and retrieve audit data
 - Load that data into the temp table
-- copy from the temp table to the final destination table
-- drop the temp table
+- Copy from the temp table to the final destination table
+- Drop the temp table
 
 Satori audit data contains a unique key "flow_id". We are leveraging this to support referential integrity. Duplicate audit entries will never be created in the final table. The temp table step ensures this using a postgres 'on conflict' statement.
 
@@ -115,6 +119,8 @@ In the cloud function, these are defined under "Runtime, Build, Connections and 
 Notice we select "use as environment variable" as well as version "latest". 
 
 ![cfeditsecrets](images/cloudrun_editsecrets.png)
+
+**All of the above environment variables - both the run time variables as well as the secrets - need to be configured in order for this sample code to function correctly.**
 
 Here is the triggers page, showing the trigger for this cloud function, note that it references the Pub/Sub topic you created above:
 
